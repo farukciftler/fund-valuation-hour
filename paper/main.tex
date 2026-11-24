@@ -1,0 +1,530 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{amsmath,amssymb}
+\usepackage[hidelinks]{hyperref}
+\usepackage{caption}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.16}
+
+%% Every number, both tables and the figure are generated from the analysis
+%% output by sayilar.py. None is typed by hand.
+\input{numbers}
+\captionsetup{font=small}
+
+\title{Which Hour Does a Fund Price?\\
+Non-Synchronous Fund Valuation and the Evaluation of Forecasting Systems:\\
+Pre-Registered Evidence from T\"urkiye}
+
+\author{Abdullah Faruk Ciftler\\
+\small ORCID: \href{https://orcid.org/0009-0001-9310-3812}{0009-0001-9310-3812}}
+
+\date{November 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+A mutual fund's daily price carries a date, not a time. For a fund holding
+securities that trade in another time zone, the hour at which they are valued
+decides which market session each published return contains, and so how much
+of a ``next-day'' price is already fixed when a forecasting system is asked to
+predict it. The question arose while auditing a language-model agent whose
+one-day fund forecasts missed in a patterned way. We measure the valuation
+hour for all \NFunds{} funds on T\"urkiye's fund platform whose names identify
+them as foreign-equity funds, under a pre-analysis plan committed before any
+of their price series was examined. A fund price dated $t$ is explained best
+not by the United States close of day $t-1$ but by futures prices at about
+17:00 Istanbul time on that day. The conventional close-to-close alignment
+explains a median of \MedRefR{} of the variance of daily fund returns; the
+hour-aligned one explains \MedBestR. A test with no hour search confirms it:
+the late New York session of day $t-2$ enters the return dated $t$ in all
+\NFunds{} funds ($z$ between \MinZL{} and \MaxZL), and the late session of day
+$t-1$ in none. An industry directive, located only after the analysis,
+prescribes a window of 17:30 to 18:00. Three consequences follow. A system
+that predicts such a price after the window is reporting a number already
+determined, and a median of \MedRLate{} of its variance is public a full
+trading day earlier still, so a no-change baseline is not a fair comparison.
+Market betas from daily data are attenuated by a factor of about \BetaRatio.
+And under forward pricing the lag is not a trading opportunity. All four
+pre-registered criteria are met, one exactly at its threshold.
+\end{abstract}
+
+\section{Introduction}
+
+A mutual fund publishes one price per day. When the fund holds securities that
+trade while its home market is asleep, that single price has to be struck from
+quotes observed at some particular moment, and which moment it is determines
+what the fund's daily return means. If the moment is the foreign market's
+close, the fund's return lines up with the familiar close-to-close index
+return. If it is earlier, part of each foreign session is carried into the
+next day's fund return, and anyone comparing the two series date by date is
+comparing different things.
+
+The question matters for three groups. Researchers who evaluate fund
+performance from daily data estimate betas, tracking errors and alphas whose
+values depend on the alignment. Investors read a fund's ``daily return'' on
+their platform and compare it with the index move they saw the same day.
+Regulators care because a price that is known to lag is, under some dealing
+rules, a price that can be traded against.
+
+The literature on this question grew out of the United States, where funds
+holding Asian and European shares struck their prices at the New York close
+from quotes that were by then many hours old. Those stale prices were
+predictable, and because orders could be placed after the information arrived
+and still receive the old price, they were also
+exploitable~\cite{bhargava1998exploiting,chalmers2001perils,goetzmann2001daytrading,boudoukh2002stale,zitzewitz2003cares}.
+The geometry we examine is the reverse: a home market that closes before the
+foreign one and values foreign shares while they are still trading.
+
+A fourth group has appeared more recently: people who build and evaluate
+forecasting systems. A learned model or a language-model agent asked to
+predict ``tomorrow's price'' of such a fund is scored against a number whose
+information content was fixed at an hour the benchmark designer may not know.
+
+We study the question for T\"urkiye, whose fund platform lists funds investing
+abroad and publishes a dated daily price for each. The hypothesis did not come
+from theory. It came from that fourth setting. A language-model agent had been
+writing sealed daily forecasts for a handful of assets, scored by a
+deterministic engine~\cite{ciftler2026ledger}. An exploratory audit of why its
+one-day forecasts for a foreign-equity fund missed in a patterned way found
+that the fund's published price tracked United States futures at about 18:00
+Istanbul time far better than it tracked the New York close. One fund and an
+after-the-fact reading is not evidence. We therefore wrote a pre-analysis plan
+fixing the fund universe, the data, the candidate alignments, four hypotheses
+and their pass criteria, committed it, and only then downloaded the price
+series of \NFunds{} other funds. The originating fund is not in the sample.
+
+\paragraph{Findings.} The pattern replicates across the universe. All four
+pre-registered criteria are met. The sharpest of them involves no search over
+hours at all and holds in every fund.
+
+\paragraph{Contribution.} We document the valuation hour of foreign-equity
+funds in this market, show how large the resulting misalignment is, give a
+correction, and set out what the misalignment means for evaluating
+forecasting systems on such targets (\S\ref{sec:forecasting}). The hour turns out to be written down, in an industry directive
+that neither the regulator's communiqu\'es nor the fund's prospectus text
+reproduces. What had not been measured, as far as our search could establish,
+is whether published prices follow it and what that does to the return series
+(\S\ref{sec:related}).
+
+\section{Institutional background and related work}\label{sec:related}
+
+\paragraph{What the rules say.} We read the rules after the analysis was
+finished, and report them in the order in which a data user would meet them.
+The securities regulator's communiqu\'e on fund financial reporting requires
+exchange-traded assets to be valued at prices formed on the exchange on the
+valuation day and foreign-currency assets to be converted at the central
+bank's buying rate~\cite{spk2013valuation}. It says nothing about foreign
+exchanges and names no hour. The regulator's communiqu\'e on investment funds
+and its accompanying guide are equally silent on the
+hour~\cite{spk2013funds}. The prospectus of the fund that prompted this study
+states only that assets are valued under those rules and under a directive of
+the capital markets association.
+
+That directive is where the hour is written~\cite{tspb2026valuation}. Its
+article on shares and exchange-traded products listed abroad distinguishes two
+cases. If the foreign exchange has finished its trading day by 18:00 Istanbul
+time, the closing price is used. If it has not, the price is a weighted
+average price obtained from a data vendor at any moment between 17:30 and
+18:00 Istanbul time. In both cases the conversion uses the central bank's
+indicative buying rate announced at 15:30. The directive was approved by the
+regulator, entered into force on 1 March 2024, and has been amended several
+times since; we read the text as amended in August 2026 and did not trace
+earlier wordings of the article. New York has never finished its day by
+18:00 in Istanbul, so United States shares always fall under the second case.
+
+\paragraph{Dealing.} Fund orders in this market are forward priced. The
+investment-funds communiqu\'e requires an order to be filled at the unit price
+found in the first calculation after the order is given, money-market and
+short-term funds excepted~\cite{spk2013funds}. The originating fund's
+prospectus sets its daily cut-off at 13:30. We did not read the dealing terms
+of each of the \NFunds{} funds in the sample.
+
+\paragraph{Related work.} The early studies established that international
+funds priced at the New York close had predictable returns and estimated what
+trading on them cost long-term
+holders~\cite{bhargava1998exploiting,chalmers2001perils,goetzmann2001daytrading,boudoukh2002stale,zitzewitz2003cares,greene2002dilution}.
+A second strand proposed fair-value adjustments that would remove the
+predictability~\cite{bhargava2001fairvalue,chua2008fairpricing}. A third is
+closest to our purpose: it concerns what stale prices do to performance
+evaluation~\cite{qian2011stale}, alongside the related problem of serially
+correlated returns in illiquid portfolios~\cite{getmansky2004serial}. More recent work extends the stale-price
+question to fixed-income funds~\cite{choi2022sitting}.
+
+We searched for studies of this market specifically: the national citation
+index, a general scholarly search engine and a DOI registry, in Turkish and in
+English, for stale pricing, valuation time and the timing of fund prices on
+the platform. We found none. That is a statement about our search. The
+directive itself is public, and those who value these funds apply it; what we
+did not find is a measurement of what the window does to the
+published return series, or a statement of it in the places where users of
+that series would look.
+
+\section{Data and pre-analysis plan}\label{sec:data}
+
+\paragraph{Universe.} The platform's public fund list was read on the day the
+plan was written. Every fund whose registered name contains both the words for
+``foreign'' and ``equity'' was taken: \NFunds{} funds. The rule was fixed
+before any price was downloaded, no fund was added or removed afterwards, and
+none fell below the minimum sample. The word ``technology'' appears in the
+names of \NTech{} of them.
+
+\paragraph{Fund prices.} Dated daily prices come from the platform's public
+price service. The fund return dated $t$ is the ratio of two consecutive
+published prices minus one.
+
+\paragraph{Market data.} Hourly bars for E-mini S\&P~500 and E-mini
+Nasdaq-100 futures and for the dollar--lira exchange rate, and daily bars for
+the corresponding cash indices and the exchange rate, were taken from a public
+quote service. A fund with ``technology'' in its name is paired with Nasdaq-100
+futures and every other fund with S\&P~500 futures. The pairing was fixed from
+the names alone. Because the funds are priced in lira, the exchange-rate
+return over the same interval is added to the futures return.
+
+\paragraph{Clock.} All times are Istanbul time, which is three hours ahead of
+UTC all year. An hourly bar is labelled by the time it ends. Futures trade
+almost around the clock, so the label means the same thing in summer and
+winter even though the New York cash session moves by an hour against it.
+
+\paragraph{Window.} The window runs from the first day covered by the hourly
+data to a fixed end date written into the plan, \WindowFirst{} to
+\WindowLast, giving \NDaysMin{} to \NDaysMax{} fund-price days per fund.
+
+\paragraph{Candidates and reference.} A candidate alignment is a pair $(h,k)$:
+the futures-plus-currency return between hour $h$ on trading day $t-k-1$ and
+hour $h$ on trading day $t-k$, for every hourly label $h$ and for
+$k\in\{0,1,2\}$. The \emph{reference} is the alignment a researcher would
+reach for first: the daily close-to-close return of the cash index plus the
+daily currency return. We compute it at lags $0$, $1$ and $2$ and keep
+whichever lag gives the reference its highest $R^{2}$, so the comparison is
+tilted in favour of the conventional approach. Gains in $R^{2}$ are always
+computed on identical rows.
+
+\paragraph{Pre-registered hypotheses.}
+\begin{description}
+  \item[P1, the hour.] The best candidate has $k=1$ and $h$ between 17:00 and
+  19:00. Criterion: in at least \PoneNeed{} of \NFunds{} funds.
+  \item[P2, size and stability.] The best candidate beats the reference by at
+  least $0.05$ in $R^{2}$, and the best hour in each half of the sample lies
+  within one hour of the best hour overall. Criterion: both, in at least
+  \PtwoNeed{} funds. The hour scan is a multiple comparison, so no $p$-value is
+  reported for P1 or P2.
+  \item[P3, a test without a search.] Fix the anchor at 18:00, the hour found
+  for the originating fund. Let $L_{d}$ be the futures return from 18:00 on day
+  $d$ to the New York close of day $d$, the \emph{late session}, and $E_{d}$
+  the return from the previous New York close to 18:00 on day $d$. Regress
+  \[
+    r^{\text{fund}}_{t} = a + b_{E}\,E_{t-1} + b_{L}\,L_{t-2} + \varepsilon_{t}.
+  \]
+  If the fund is valued near 18:00 on day $t-1$, the late session of day $t-2$
+  is still unpriced when the price dated $t-1$ is struck and must appear in the
+  return dated $t$: $b_{L}>0$ and close to $b_{E}$. If the fund is valued at
+  the New York close, $L_{t-2}$ is already in the previous price and
+  $b_{L}=0$. Criterion: $b_{L}>0$ at the one-sided five per cent level with
+  heteroskedasticity-robust standard errors, in at least \PthreeNeed{} funds.
+  \item[P4, a consequence.] The market beta estimated under the reference
+  alignment is smaller than the one estimated at the best candidate.
+  Criterion: in at least \PfourNeed{} funds.
+\end{description}
+
+The plan also fixed, before the data, that no mechanism would be asserted from
+the correlations alone and that no claim about trading would be made without
+establishing the dealing rules. Both conditions are taken up in
+\S\ref{sec:related} and \S\ref{sec:implications}.
+
+\section{Results}\label{sec:results}
+
+\begin{table}[t]
+\centering
+\small
+\setlength{\tabcolsep}{4.5pt}
+\begin{tabular}{llrrrrrrrccc}
+\toprule
+ & & & \multicolumn{2}{c}{reference} & \multicolumn{4}{c}{best candidate} & & & \\
+Fund & Drv. & $n$ & lag & $R^{2}$ & $h$ & $k$ & $R^{2}$ & $\Delta R^{2}$ &
+best $h$ by half & P1 & P2 \\
+\midrule
+\TabScanRows
+\bottomrule
+\end{tabular}
+\caption{Hour scan. ``Drv.'' is the futures contract paired with the fund from
+its name (ES: S\&P~500, NQ: Nasdaq-100). The reference is the daily
+close-to-close alignment at whichever lag suits it best. $\Delta R^{2}$ is
+computed on identical rows. Funds are identified by their public platform
+codes.}
+\label{tab:scan}
+\end{table}
+
+\paragraph{The conventional alignment is two days off.} In all \RefKTwo{}
+funds the daily close-to-close return that best explains the fund return dated
+$t$ is that of day $t-2$. Even at that lag it explains little: $R^{2}$ between
+\MinRefR{} and \MaxRefR, with a median of \MedRefR.
+
+\paragraph{P1 and P2: the hour.} In every fund the best candidate has $k=1$.
+In \AtSeventeen{} funds it is 17:00, and in the other \EarlierHour{} it is
+earlier in the afternoon (Table~\ref{tab:scan}). P1 required the best hour to
+fall between 17:00 and 19:00 in at least \PoneNeed{} funds and is met in
+\PoneK: exactly at its threshold, and at the lower edge of the stated range.
+We report that plainly. The prediction was written around the 18:00 found for
+the originating fund, and the universe turns out to sit an hour earlier. Bar
+labels mark the end of an hour, so the two labels that bracket the directive's
+window of 17:30 to 18:00 are 17:00 and 18:00. The sample favours the first and
+the originating fund the second; in Figure~\ref{fig:curve} the two are the
+highest points of most curves. One reading, which hourly bars cannot test, is
+that a weighted average price accumulates over the session up to the moment it
+is read and therefore reflects a time somewhat before that moment. P2,
+which asks for a gain of at least $0.05$ and a stable hour, is met in \PtwoK{}
+funds against a criterion of \PtwoNeed. The median gain in $R^{2}$ is \MedDR,
+taking the median from \MedRefR{} to \MedBestR. For the \NTech{} technology
+funds the median hour-aligned $R^{2}$ is \TechMedBestR.
+
+The \EarlierHour{} funds with earlier best hours are the ones whose names point
+away from the United States or toward a single global sector: a European fund,
+a fund tracking an index of companies from another group of countries, a
+health-care fund, an alternative-energy fund and a multi-country fund. For
+these, United States futures are a rough stand-in for the true underlying, and
+the plan anticipated that their results would be weaker without removing them
+from the denominator.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[width=0.86\textwidth, height=6.2cm,
+  xlabel={hour at which the futures price is read on day $t-1$ (Istanbul time)},
+  ylabel={$R^{2}$}, xmin=2, xmax=24, ymin=0, ymax=0.75,
+  xtick={3,6,9,12,15,17,18,21,24}, grid=major, grid style={gray!25}]
+\input{sekil_egri}
+\end{axis}
+\end{tikzpicture}
+\caption{$R^{2}$ of the fund return dated $t$ on the futures-plus-currency
+return between hour $h$ of day $t-2$ and hour $h$ of day $t-1$, one line per
+fund; thick lines are the technology funds. Explanatory power rises through
+the Istanbul day, peaks near 17:00 and collapses through the New York
+afternoon. Hours before 02:00 are omitted: the futures market's daily
+maintenance break falls there.}
+\label{fig:curve}
+\end{figure}
+
+\paragraph{P3: the late session.} Table~\ref{tab:late} gives the test that
+involves no search. The coefficient on the late New York session of day $t-2$
+is positive and significant in all \PthreeK{} funds, with $z$ between \MinZL{}
+and \MaxZL. Its median is \MedBL, against \MedBE{} for the coefficient on the
+return from that close to 18:00 on day $t-1$. The two are of the same size, as
+valuation near 18:00 implies and valuation at the close forbids. A sign test
+across funds gives $p=\SignP$.
+
+\paragraph{P4: betas.} The reference alignment gives a smaller beta than the
+best candidate in all \PfourK{} funds. The median beta rises from \MedBetaRef{}
+to \MedBetaBest, a factor of about \BetaRatio.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lccccccc}
+\toprule
+ & \multicolumn{3}{c}{P3 (pre-registered)} & placebo & \multicolumn{2}{c}{beta} & best $h$ \\
+Fund & $b_{E}$ (s.e.) & $b_{L}$ (s.e.) & $z_{L}$ & $b$ on $L_{t-1}$ (s.e.) &
+ref. & best & summer / winter \\
+\midrule
+\TabLateRows
+\bottomrule
+\end{tabular}
+\caption{Left: the regression of the fund return dated $t$ on the return from
+the New York close of day $t-2$ to 18:00 on day $t-1$ ($E$) and on the late
+session of day $t-2$ ($L$), with robust standard errors. Right: three checks
+that were \emph{not} pre-registered. The placebo adds the late session of day
+$t-1$, which occurs after any valuation near 18:00. ``Summer / winter'' is the
+best hour at $k=1$ when the United States is on daylight and on standard
+time.}
+\label{tab:late}
+\end{table}
+
+\section{Checks that were not pre-registered}\label{sec:robust}
+
+The following were run after the main results were seen. They are exploratory
+and are reported as such.
+
+\paragraph{Placebo.} If valuation happens near 18:00 on day $t-1$, the New
+York session that follows it cannot be in the price dated $t$. Adding
+$L_{t-1}$ to the P3 regression gives a coefficient indistinguishable from zero
+in every fund: \PlaceboSig{} of \NFunds{} exceed two standard errors in either
+direction, and the median coefficient is $\PlaceboMed$.
+
+\paragraph{Currency.} Adding the exchange-rate return to the P3 regression
+leaves $b_{L}$ positive and significant in \FxRobustK{} funds.
+
+\paragraph{Whose clock.} If funds were valued at a fixed point of the New York
+session, the best Istanbul hour would shift by one hour between United States
+summer and winter time. Splitting the sample by that calendar, the best hour is
+the same in both halves for \SeasonSame{} funds, and for all
+\SeasonSameAtSeventeen{} of the funds whose overall best hour is 17:00 it is
+17:00 in both. The valuation moment follows the Istanbul clock, not the New
+York one. In winter, 17:00 in Istanbul is before the New York cash open.
+
+\paragraph{How much is known in advance.} The late session of day $t-2$ alone,
+which is public a full trading day before the price dated $t$ is struck,
+explains a median of \MedRLate{} of the variance of the fund return dated $t$.
+
+\paragraph{The originating fund.} The fund that prompted the study is managed
+by a different company and was excluded from the sample. Run through the same
+code it gives a best hour of \DiscHour, an hour later than the universe, with
+an hour-aligned $R^{2}$ of \DiscBestR{} against \DiscRefR{} for its best daily
+alignment, and a late-session coefficient of \DiscBL{} ($z=\DiscZL$). Its hour
+is the reason P1's range was centred where it was.
+
+\section{Consequences for evaluating forecasting systems}\label{sec:forecasting}
+
+The result began as a problem in evaluating a forecasting agent, and it bears
+on any system scored against prices of this kind. We ran no forecasting
+experiment for this paper; what follows is implied by the alignment result
+and uses only numbers already reported.
+
+\paragraph{A next-day target that is already determined.} The price dated $t$
+is struck from quotes read near 17:00 to 18:00 on day $t-1$ and published the
+next morning. Between those two moments the target does not yet exist as a
+published number, and it can no longer change. A system run in that interval
+with access to market data is not forecasting the price dated $t$. It is
+reconstructing it. Futures and the exchange rate at the valuation hour alone
+account for a median of \MedBestR{} of the variance of the fund return. Part
+of the remainder is the gap between a broad futures contract and the fund's
+actual holdings, which waiting does not reveal.
+
+\paragraph{Leakage a full day earlier.} Even a system run before the valuation
+window holds part of the answer. The late New York session of day $t-2$ is
+public by the morning of day $t-1$ and explains a median of \MedRLate{} of the
+variance of the return dated $t$. A model given the most recent
+close-to-close index return as a feature therefore carries information about
+the target that a naive reading of the dates says it should not have. In a
+supervised setting this is target leakage through a timestamp convention, and
+it will appear as predictive skill.
+
+\paragraph{Baselines must share the information set.} A no-change baseline,
+or a drift estimated from past fund returns, sees none of this. A system that
+reads the session will beat both without any ability to forecast. The fair
+comparator is the mechanical one: the futures-plus-currency return over the
+interval the price reflects, up to whatever moment the system was run. Skill
+is what remains after that.
+
+\paragraph{Tool-using agents make the information set harder to fix.} For a
+model with a fixed training cut-off, the evaluator controls what the model can
+know. For an agent that retrieves data when it runs, the information set is
+set by the clock at run time and by what the agent chose to look up. Two runs
+of the same agent on the same day, one at noon and one in the evening, face
+different problems under the same label. A benchmark built on such targets
+should record the run time of every prediction and score it against the
+baseline available at that time.
+
+\paragraph{Recommendations.} State the valuation hour of every target, or
+measure it as we do here. Timestamp each prediction and define its
+information set relative to that hour, not to the publication date. Give
+baselines the same information. Report instruments with delayed publication
+separately from those quoted continuously, since pooling them mixes forecasts
+with reconstructions.
+
+\section{What this does and does not imply}\label{sec:implications}
+
+\paragraph{For anyone using daily fund returns.} A foreign-equity fund return
+dated $t$ on this platform spans roughly 17:00 on day $t-2$ to 17:00 on day
+$t-1$. It contains the whole New York cash session of day $t-2$ and none of
+day $t-1$'s. Regressing it on the same-dated index return, or on the
+previous day's, measures almost nothing. Using lag two recovers part of the
+relationship; aligning by hour recovers most of it. Betas, tracking errors and
+any alpha estimated from misaligned daily data are biased, the betas toward
+zero. The correction is mechanical: build the benchmark return between the
+valuation hours and include the currency leg.
+
+\paragraph{For investors.} The daily return displayed for such a fund is not
+the fund's response to that day's market. It is the response to a session that
+closed two trading days before the date shown.
+
+\paragraph{For trading: no claim.} A stale price is exploitable only if an
+order can be executed at it after the information it omits has become public.
+Here it cannot, under the rules we read. Orders are forward priced, and the
+one cut-off we verified is 13:30. An investor who orders before the cut-off on
+day $d$ receives the price struck that evening, which already contains
+everything the previous New York session did. The information the published
+price lags is inside the price she deals at. This is the opposite of the
+setting in which stale fund prices were first
+studied~\cite{chalmers2001perils,zitzewitz2003cares}, where the stale price
+was the dealing price. We did not verify the cut-off of each fund in the
+sample, and a fund that accepted orders after its valuation window would be a
+different case.
+We therefore make no claim that the lag can be traded on. What we establish is
+when the price is struck, not that anyone can deal against it.
+
+\section{Limitations}\label{sec:limits}
+
+\paragraph{Correlation, not an audit.} We infer the valuation hour from which
+futures prices the fund price moves with. That is evidence about what the
+price reflects. It is not an audit of any fund's procedure, and we did not
+read the valuation documents of the funds in the sample.
+
+\paragraph{The rule was found late.} The pre-analysis plan was written without
+knowledge of the directive. Its hour range came from one fund, not from the
+rule. Had we read the directive first, the hypothesis would have been a test
+of compliance with a stated window, and a sharper one. We have not rewritten
+the plan to look as though it was.
+
+\paragraph{One regime.} The whole window lies after the directive entered
+into force. We cannot say what the valuation hour was before it.
+
+\paragraph{Hourly resolution.} Bars are one hour wide, so the moment is
+located to within about thirty minutes. We cannot distinguish a price read at
+17:30 from one read at 17:59, nor say why the sample fits the 17:00 bar better
+than the 18:00 one. Finer bars from the same source cover too few days to
+meet the plan's minimum sample.
+
+\paragraph{A proxy for the underlying.} Each fund is paired with a broad
+futures contract chosen from its name. The funds' actual holdings are not
+used. For funds that are not predominantly invested in the United States the
+proxy is poor, and their results are weaker for that reason.
+
+\paragraph{One window, one data vendor.} The window is a little over two
+years, bounded by the availability of hourly bars from a single public
+source, whose historical bars can be revised. The return series computed from
+the bars as downloaded are archived with the code.
+
+\paragraph{P1 passed at its threshold.} \PoneNeed{} of \NFunds{} is the
+pre-registered criterion and also the count obtained. The hour range was set from one fund;
+the universe sits at its lower edge. A plan written without that fund in mind
+would have centred the range differently, and we cannot rewrite it now.
+
+\paragraph{The universe is small and name-defined.} The \NFunds{} funds are
+every fund the naming rule selects, not a sample from a larger population. Funds that
+hold foreign equities under other names, including the originating fund, are
+outside it.
+
+\section{Data and code availability}
+
+The pre-analysis plan, the analysis code, the archived fund-price downloads,
+the market return series the analysis reads, and the scripts that generate
+every number, table and figure in this paper are at
+\url{https://github.com/farukciftler/fund-valuation-hour}. All inputs are
+public.
+
+Three things about that archive should be stated. First, the plan was committed
+to the author's private working repository, which also holds unrelated personal
+records and is not public. The commit precedes the download record by less
+than two minutes. Both timestamps are the author's own, and a reader cannot
+verify their order. Second, the originating fund is one of the assets of the
+anonymised dataset cited in the introduction, so its code and price series are
+withheld. The five figures reported for it in Section~\ref{sec:robust} are
+archived as numbers and cannot be regenerated from the public files. Third,
+the quote service's bars are not redistributed. The archive holds the return
+series computed from them, unrounded, and the analysis reads those; the bars
+can be downloaded again with the same code, but may by then have been revised.
+
+\paragraph{Use of AI in preparing this manuscript.} The analysis code and this
+manuscript were drafted with language-model assistance under the author's
+direction. Every number in the text and tables is generated from the analysis
+output by a script and none is typed by hand. The author is responsible for
+the content.
+
+\bibliographystyle{plain}
+\bibliography{refs}
+
+\end{document}

@@ -1,0 +1,107 @@
+name: verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  analysis:
+    name: numbers regenerate from the archived downloads
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install numpy==2.0.2
+
+      - name: Run the plan's analysis, the checks outside the plan, and the number generator
+        run: python3 analiz.py && python3 saglamlik.py && python3 sayilar.py
+
+      # sonuc.json keeps one unrounded p-value per fund, which may differ in
+      # its last bits between platforms. Everything the manuscript reads is
+      # rounded, so the comparison is made on what the manuscript reads.
+      - name: Fail if regeneration changed anything the manuscript reads
+        run: |
+          if ! git diff --quiet -- paper/numbers.tex paper/sekil_egri.tex; then
+            echo "::error::generated manuscript inputs differ from the committed ones"
+            git --no-pager diff -- paper/numbers.tex paper/sekil_egri.tex | head -80
+            exit 1
+          fi
+          echo "ok: committed numbers, tables and figure match the archived data"
+
+  paper:
+    name: manuscript builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compile PDF
+        uses: xu-cheng/latex-action@v3
+        with:
+          working_directory: paper
+          root_file: main.tex
+          latexmk_use_xelatex: false
+
+      - name: Bibliography and cross-references actually resolved
+        run: |
+          cd paper
+          if [ ! -s main.bbl ]; then
+            echo "::error::main.bbl is missing or empty -- bibtex did not run"
+            exit 1
+          fi
+          N=$(grep -c '^\\bibitem' main.bbl || true)
+          C=$(grep -o '\\cite{[^}]*}' main.tex | tr -d ' ' | sed 's/\\cite{//; s/}//' | tr ',' '\n' | sort -u | wc -l | tr -d ' ')
+          echo "bibitems: $N   distinct cited keys: $C"
+          if [ "$N" -lt "$C" ]; then
+            echo "::error::$C cited keys but only $N bibitems"
+            exit 1
+          fi
+          if grep -q 'Citation .* undefined' main.log; then
+            echo "::error::undefined citation survived the final pass"
+            grep 'Citation .* undefined' main.log | tail -5
+            exit 1
+          fi
+          if grep -q 'Reference .* undefined' main.log; then
+            echo "::error::undefined cross-reference survived the final pass"
+            grep 'Reference .* undefined' main.log | tail -5
+            exit 1
+          fi
+          echo "pages: $(grep -o 'Output written on main.pdf ([0-9]* page' main.log | grep -o '[0-9]*')"
+          echo "ok: bibliography and cross-references resolved"
+
+      - name: Assemble the arXiv submission package
+        # arXiv compiles the source itself but does not run bibtex, so main.bbl
+        # travels with it. The figure coordinates are a separate input file.
+        run: |
+          cd paper
+          mkdir -p ../arxiv
+          FILES="main.tex numbers.tex sekil_egri.tex refs.bib main.bbl"
+          cp $FILES ../arxiv/
+          cd ../arxiv
+          tar czf ../arxiv-submission.tar.gz .
+          cd ..
+          echo "package contents:"; tar tzf arxiv-submission.tar.gz | sed 's/^/  /'
+          for f in $FILES; do
+            tar tzf arxiv-submission.tar.gz | grep -q "$f" || {
+              echo "::error::$f missing from the submission package"; exit 1; }
+          done
+          tar tzf arxiv-submission.tar.gz | grep -E '\.(aux|log|out|synctex)' && {
+            echo "::error::build artefacts leaked into the package"; exit 1; } || true
+          echo "ok: submission package complete"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: manuscript
+          path: paper/main.pdf
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arxiv-submission
+          path: arxiv-submission.tar.gz
+          if-no-files-found: error

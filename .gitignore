@@ -1,0 +1,13 @@
+__pycache__/
+veri/yahoo_*.json
+*.pyc
+.DS_Store
+.venv/
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.bbl
+paper/*.blg
+paper/*.fls
+paper/*.fdb_latexmk
+paper/*.pdf

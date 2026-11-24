@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+title: "Which Hour Does a Fund Price? Pre-analysis plan, code and archived data"
+message: "If you use this code or the archived data, please cite it as below."
+type: software
+abstract: >-
+  Pre-analysis plan, analysis code and archived raw downloads for a study of
+  the hour at which foreign-equity mutual funds on Türkiye's fund platform are
+  valued, and of what that hour implies for evaluating forecasting systems
+  scored against such prices. Public data only.
+keywords:
+  - mutual funds
+  - non-synchronous pricing
+  - valuation time
+  - pre-registration
+  - forecast evaluation
+license: MIT
+version: "1.0.0"
+date-released: "2026-11-24"
+authors:
+  - family-names: Ciftler
+    given-names: Abdullah Faruk
+    orcid: "https://orcid.org/0009-0001-9310-3812"
+repository-code: "https://github.com/farukciftler/fund-valuation-hour"
